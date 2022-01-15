@@ -109,13 +109,14 @@ public class XMLConfigBuilder extends BaseBuilder {
      * @return Configuration 对象
      */
     public Configuration parse() {
-        // 若已解析，抛出 BuilderException 异常
+        // 若已解析, 抛出BuilderException异常
         if (parsed) {
             throw new BuilderException("Each XMLConfigBuilder can only be used once.");
         }
         // 标记已解析
         parsed = true;
-        ///parser是XPathParser解析器对象，读取节点内数据，<configuration>是MyBatis配置文件中的顶层标签
+        ///parser是XPathParser解析器对象, 读取节点内数据,
+        // <configuration>是MyBatis配置文件中的顶层标签
         // 解析 XML configuration 节点
         parseConfiguration(parser.evalNode("/configuration"));
         return configuration;
