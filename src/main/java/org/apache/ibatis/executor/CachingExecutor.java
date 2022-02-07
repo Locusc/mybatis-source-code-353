@@ -108,7 +108,11 @@ public class CachingExecutor implements Executor {
     @Override
     public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
             throws SQLException {
+        // 从MappedStatement中获取Cache, 注意这里的Cache是从MappedStatement中获取的
+        // 也就是我们上面解析Mapper中<cache/>标签中创建的, 它保存在Configuration中
+        // 我们在初始化解析xml时分析过每一个MappedStatement都有一个Cache对象, 这里就是
         Cache cache = ms.getCache();
+        // 如果配置文件中没有配置<cache>, 则cache为空
         if (cache != null) {
             // 如果需要清空缓存，则进行清空
             flushCacheIfRequired(ms);
@@ -119,9 +123,12 @@ public class CachingExecutor implements Executor {
                 // 从二级缓存中，获取结果
                 List<E> list = (List<E>) tcm.getObject(cache, key);
                 if (list == null) {
-                    // 如果不存在，则从数据库中查询
+                    // 如果不存在 这个查询实际也是先走一级缓存查询, 一级缓存没有的话, 则从数据库中查询
+                    // delegate -> BaseExecutor
                     list = delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
-                    // 缓存结果到二级缓存中
+                    // 这里其实是将还未commit的数据添加到entriesToAddOnCommit中
+                    // commit或close后Cache对象才会有真正的二级缓存
+                    // TransactionalCache.flushPendingEntries
                     tcm.putObject(cache, key, list); // issue #578 and #116
                 }
                 // 如果存在，则直接返回结果

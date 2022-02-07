@@ -57,10 +57,12 @@ public class TransactionalCache implements Cache {
     private boolean clearOnCommit;
     /**
      * 待提交的 KV 映射
+     * 在事务被提交前, 所有从数据库中查询的结果将被缓存在此集合中
      */
     private final Map<Object, Object> entriesToAddOnCommit;
     /**
      * 查找不到的 KEY 集合
+     * 在事务被提交前, 当缓存未命中时, CacheKey将被存储在此集合中
      */
     private final Set<Object> entriesMissedInCache;
 
@@ -85,9 +87,11 @@ public class TransactionalCache implements Cache {
     public Object getObject(Object key) {
         // issue #116
         // 从 delegate 中获取 key 对应的 value
+        // 在查询的时候是直接从delegate中去查询的, 也就是从真正的存储对象中查询
         Object object = delegate.getObject(key);
         // 如果不存在，则添加到 entriesMissedInCache 中
         if (object == null) {
+            // 缓存未命中, 则将key存入到entriesMissedInCache中
             entriesMissedInCache.add(key);
         }
         // issue #146
@@ -108,6 +112,7 @@ public class TransactionalCache implements Cache {
     @Override
     public void putObject(Object key, Object object) {
         // 暂存 KV 到 entriesToAddOnCommit 中
+        // 将键值对存入到 entriesToAddOnCommit 这个Map中, 而非真实的缓存对象delegate中
         entriesToAddOnCommit.put(key, object);
     }
 
@@ -129,7 +134,7 @@ public class TransactionalCache implements Cache {
         if (clearOnCommit) {
             delegate.clear();
         }
-        // 将 entriesToAddOnCommit、entriesMissedInCache 刷入 delegate 中
+        // 将 entriesToAddOnCommit、entriesMissedInCache 刷入 delegate(cache) 中
         flushPendingEntries();
         // 重置
         reset();
@@ -154,8 +159,10 @@ public class TransactionalCache implements Cache {
      * 将 entriesToAddOnCommit、entriesMissedInCache 刷入 delegate 中
      */
     private void flushPendingEntries() {
-        // 将 entriesToAddOnCommit 刷入 delegate 中
+        // 将 entriesToAddOnCommit中的内容转存到delegate中
         for (Map.Entry<Object, Object> entry : entriesToAddOnCommit.entrySet()) {
+            // 在这里真正的将entriesToAddOnCommit的对象逐个添加到delegate中, 只有这时
+            // 二级缓存才真正生效
             delegate.putObject(entry.getKey(), entry.getValue());
         }
         // 将 entriesMissedInCache 刷入 delegate 中

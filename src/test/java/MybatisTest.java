@@ -7,6 +7,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+/**
+ * @author Jay
+ * 如果是结合Spring, 那么Mybatis的初始化加载实际上是Spring完成的
+ * 2022/2/2
+ */
 public class MybatisTest {
 
   /**
